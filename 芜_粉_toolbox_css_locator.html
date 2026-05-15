@@ -1,0 +1,1404 @@
+<!--
+小芜白粉选择器检索器 · 全屏悬浮工具台版
+特性：
+1. 注入到父页面 body，不固定在小剧场空间内。
+2. 默认是更短的粉白小折叠条，轻点展开。
+3. 折叠短条可拖动。
+4. 展开后标题栏可拖动。
+5. 展开后支持拖拽四边和四角调整大小。
+6. 保留原组件 cssModules 选择器数据。
+7. 增加搜索、分类折叠、收藏、复制记录和导入 CSS 文件。
+-->
+
+<template id="xw-css-locator-payload">
+  <div id="xw-css-locator-root">
+    <style>
+      #xw-css-locator-root,
+      #xw-css-locator-root * {
+        box-sizing: border-box;
+      }
+
+      #xw-css-locator-root {
+        --xw-bg: rgba(255, 248, 251, .98);
+        --xw-bg2: rgba(255, 238, 246, .96);
+        --xw-card: rgba(255, 255, 255, .74);
+        --xw-line: rgba(238, 151, 185, .34);
+        --xw-line2: rgba(255, 255, 255, .72);
+        --xw-text: rgba(92, 53, 68, .94);
+        --xw-soft: rgba(126, 84, 101, .72);
+        --xw-weak: rgba(126, 84, 101, .46);
+        --xw-pink: rgba(238, 128, 174, .88);
+        --xw-hot: rgba(232, 86, 146, .95);
+        --xw-green: rgba(56, 190, 144, .95);
+        --xw-red: rgba(238, 91, 121, .95);
+        font-family: "PingFang SC", "Microsoft YaHei", "Noto Serif SC", serif;
+      }
+
+      #xw-css-locator-root .xw-wrapper {
+        position: fixed !important;
+        top: 76px;
+        left: 50%;
+        width: 0;
+        height: 0;
+        z-index: 2147483646;
+        pointer-events: none;
+      }
+
+      #xw-css-locator-root .xw-island {
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform: translateX(-50%);
+        width: 156px;
+        height: 34px;
+        pointer-events: auto;
+        overflow: hidden;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, .68);
+        background:
+          radial-gradient(circle at 12% 10%, rgba(255, 193, 220, .55), transparent 42%),
+          linear-gradient(90deg, rgba(255,255,255,.75), rgba(255,236,246,.48)),
+          rgba(255, 246, 250, .46);
+        color: var(--xw-text);
+        box-shadow:
+          0 14px 34px rgba(201, 91, 137, .18),
+          inset 0 1px 0 rgba(255,255,255,.85);
+        backdrop-filter: blur(12px) saturate(124%);
+        -webkit-backdrop-filter: blur(12px) saturate(124%);
+        transition:
+          width .34s cubic-bezier(.18,.89,.32,1.08),
+          height .34s cubic-bezier(.18,.89,.32,1.08),
+          border-radius .24s ease,
+          background .24s ease,
+          box-shadow .24s ease,
+          opacity .18s ease,
+          transform .18s ease;
+      }
+
+      #xw-css-locator-root .xw-island:not(.xw-open):hover {
+        width: 178px;
+        box-shadow:
+          0 18px 42px rgba(201, 91, 137, .24),
+          0 0 0 1px rgba(255,255,255,.38) inset;
+      }
+
+      #xw-css-locator-root .xw-island.xw-dragging {
+        opacity: .82;
+        transform: translateX(-50%) scale(.988);
+      }
+
+      #xw-css-locator-root .xw-island.xw-open {
+        width: min(92vw, 760px);
+        height: min(78dvh, 640px);
+        max-height: calc(100vh - 28px);
+        border-radius: 22px;
+        border-color: rgba(255,255,255,.76);
+        background:
+          radial-gradient(circle at 8% 0%, rgba(255, 179, 213, .66), transparent 32%),
+          radial-gradient(circle at 92% 10%, rgba(255, 225, 239, .82), transparent 32%),
+          linear-gradient(90deg, rgba(238,128,174,.10) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(238,128,174,.08) 1px, transparent 1px),
+          rgba(255, 248, 251, .985);
+        background-size: 100% 100%, 100% 100%, 26px 26px, 26px 26px, 100% 100%;
+        box-shadow:
+          0 24px 82px rgba(187, 89, 128, .34),
+          0 0 0 1px rgba(255,255,255,.6) inset;
+        backdrop-filter: blur(18px) saturate(128%);
+        -webkit-backdrop-filter: blur(18px) saturate(128%);
+      }
+
+      #xw-css-locator-root .xw-compact {
+        height: 34px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 10px;
+        cursor: grab;
+        user-select: none;
+        touch-action: none;
+      }
+
+      #xw-css-locator-root .xw-compact:active {
+        cursor: grabbing;
+      }
+
+      #xw-css-locator-root .xw-open .xw-compact {
+        display: none;
+      }
+
+      #xw-css-locator-root .xw-mini-title {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: rgba(98, 50, 70, .88);
+        font-size: 11px;
+        letter-spacing: .06em;
+        font-weight: 700;
+      }
+
+      #xw-css-locator-root .xw-mini-title::before {
+        content: "✦";
+        color: var(--xw-hot);
+        margin-right: 7px;
+      }
+
+      #xw-css-locator-root .xw-mini-stat {
+        color: rgba(126, 84, 101, .66);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      #xw-css-locator-root .xw-pill {
+        min-width: 38px;
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 9px;
+        border-radius: 999px;
+        border: 1px solid rgba(238,128,174,.24);
+        background: rgba(255,255,255,.55);
+        color: rgba(213, 83, 137, .92);
+        font-size: 10px;
+        font-family: Georgia, "Times New Roman", serif;
+        font-style: italic;
+      }
+
+      #xw-css-locator-root .xw-expanded {
+        display: none;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      #xw-css-locator-root .xw-open .xw-expanded {
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      #xw-css-locator-root .xw-dragbar {
+        min-height: 40px;
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 9px;
+        align-items: center;
+        padding: 8px 12px;
+        border-bottom: 1px solid rgba(238, 151, 185, .25);
+        background:
+          linear-gradient(90deg, rgba(255,255,255,.86), rgba(255,239,247,.78));
+        cursor: move;
+        user-select: none;
+        touch-action: none;
+      }
+
+      #xw-css-locator-root .xw-drag-title {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: rgba(94, 43, 65, .86);
+        font-size: 11px;
+        letter-spacing: .18em;
+        text-transform: uppercase;
+      }
+
+      #xw-css-locator-root .xw-drag-note {
+        color: rgba(213, 83, 137, .62);
+        font-size: 9px;
+        white-space: nowrap;
+      }
+
+      #xw-css-locator-root .xw-close {
+        width: 27px;
+        height: 27px;
+        border: 1px solid rgba(238,128,174,.28);
+        border-radius: 10px;
+        background: rgba(255,255,255,.62);
+        color: rgba(213, 83, 137, .92);
+        cursor: pointer;
+      }
+
+      #xw-css-locator-root .xw-body {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 235px 1fr;
+        gap: 10px;
+        padding: 12px;
+        overflow: hidden;
+      }
+
+      #xw-css-locator-root .xw-side,
+      #xw-css-locator-root .xw-main {
+        min-height: 0;
+        border-radius: 18px;
+        border: 1px solid rgba(255,255,255,.72);
+        background: rgba(255,255,255,.52);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.75);
+        overflow: hidden;
+      }
+
+      #xw-css-locator-root .xw-side {
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      #xw-css-locator-root .xw-panel-head {
+        padding: 11px 12px 9px;
+        border-bottom: 1px solid rgba(238,151,185,.22);
+      }
+
+      #xw-css-locator-root .xw-panel-kicker {
+        color: rgba(213, 83, 137, .78);
+        font-size: 9px;
+        letter-spacing: .2em;
+        text-transform: uppercase;
+      }
+
+      #xw-css-locator-root .xw-panel-title {
+        margin-top: 3px;
+        color: rgba(88, 45, 62, .92);
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      #xw-css-locator-root .xw-search {
+        width: 100%;
+        height: 30px;
+        margin-top: 8px;
+        padding: 0 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(238,128,174,.26);
+        outline: none;
+        background: rgba(255,255,255,.7);
+        color: var(--xw-text);
+        font-size: 11px;
+      }
+
+      #xw-css-locator-root .xw-search::placeholder {
+        color: rgba(126,84,101,.36);
+      }
+
+      #xw-css-locator-root .xw-sidebar {
+        min-height: 0;
+        overflow-y: auto;
+        padding: 10px;
+        scrollbar-width: thin;
+      }
+
+      #xw-css-locator-root .xw-main {
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      #xw-css-locator-root .xw-toolbar {
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 9px 11px;
+        border-bottom: 1px solid rgba(238,151,185,.22);
+      }
+
+      #xw-css-locator-root .xw-tip {
+        min-width: 0;
+        color: rgba(126, 84, 101, .68);
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      #xw-css-locator-root .xw-clear {
+        flex: 0 0 auto;
+        border: 1px solid rgba(238,128,174,.25);
+        border-radius: 999px;
+        background: rgba(255,255,255,.66);
+        color: rgba(213, 83, 137, .88);
+        font-size: 10px;
+        padding: 5px 10px;
+        cursor: pointer;
+      }
+
+      #xw-css-locator-root .module-header {
+        color: rgba(213, 83, 137, .92);
+        font-size: 11px;
+        font-weight: 700;
+        margin: 12px 0 6px;
+        padding: 0 2px 6px;
+        border-bottom: 1px solid rgba(238,151,185,.24);
+        letter-spacing: .1em;
+      }
+
+      #xw-css-locator-root .module-header:first-child {
+        margin-top: 0;
+      }
+
+      #xw-css-locator-root .tag-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 7px 8px;
+        margin-bottom: 5px;
+        cursor: pointer;
+        transition: background .18s ease, transform .18s ease, border-color .18s ease;
+        font-size: 11px;
+        border-radius: 11px;
+        border: 1px solid transparent;
+      }
+
+      #xw-css-locator-root .tag-item:hover {
+        background: rgba(255,255,255,.58);
+        border-color: rgba(238,128,174,.18);
+      }
+
+      #xw-css-locator-root .tag-name {
+        min-width: 0;
+        color: rgba(97, 56, 72, .76);
+        font-family: "Fira Code", "Cascadia Code", Consolas, monospace;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: color .2s ease;
+      }
+
+      #xw-css-locator-root .tag-name.copied {
+        color: var(--xw-hot) !important;
+        font-style: italic;
+      }
+
+      #xw-css-locator-root .tag-status {
+        flex: 0 0 auto;
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: rgba(238,91,121,.85);
+        box-shadow: 0 0 8px rgba(238,91,121,.52);
+      }
+
+      #xw-css-locator-root .tag-item.found .tag-name {
+        color: rgba(58, 133, 105, .95);
+        font-weight: 700;
+      }
+
+      #xw-css-locator-root .tag-item.found .tag-status {
+        background: var(--xw-green);
+        box-shadow: 0 0 9px rgba(56,190,144,.56);
+      }
+
+      #xw-css-locator-root .tag-item.xw-hidden {
+        display: none;
+      }
+
+      #xw-css-locator-root .xw-code-area {
+        min-height: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+        outline: none;
+        resize: none;
+        background:
+          linear-gradient(90deg, rgba(238,128,174,.06) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(238,128,174,.045) 1px, transparent 1px),
+          rgba(255,255,255,.38);
+        background-size: 24px 24px;
+        color: rgba(82, 47, 61, .94);
+        font-family: "Fira Code", "Cascadia Code", Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.62;
+        padding: 14px;
+        white-space: pre;
+        overflow: auto;
+      }
+
+      #xw-css-locator-root .xw-code-area::placeholder {
+        color: rgba(126,84,101,.38);
+        font-style: italic;
+      }
+
+      #xw-css-locator-root .xw-code-area::selection {
+        background: rgba(238,128,174,.28);
+      }
+
+
+      #xw-css-locator-root .xw-compact .xw-mini-stat,
+      #xw-css-locator-root .xw-compact .xw-pill:last-child {
+        display: none;
+      }
+
+      #xw-css-locator-root .xw-tool-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+        margin-top: 8px;
+      }
+
+      #xw-css-locator-root .xw-tool-btn,
+      #xw-css-locator-root .xw-file-label {
+        height: 27px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        border: 1px solid rgba(238,128,174,.24);
+        background: rgba(255,255,255,.66);
+        color: rgba(184, 69, 116, .9);
+        font-size: 10px;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      #xw-css-locator-root .xw-tool-btn:hover,
+      #xw-css-locator-root .xw-file-label:hover,
+      #xw-css-locator-root .xw-clear:hover {
+        background: rgba(255, 240, 247, .9);
+      }
+
+      #xw-css-locator-root .xw-file-input {
+        display: none;
+      }
+
+      #xw-css-locator-root .module-header {
+        cursor: pointer;
+        user-select: none;
+      }
+
+      #xw-css-locator-root .module-header::after {
+        content: "⌄";
+        float: right;
+        color: rgba(213,83,137,.58);
+      }
+
+      #xw-css-locator-root .module-header.xw-collapsed::after {
+        content: "›";
+      }
+
+      #xw-css-locator-root .module-header.xw-collapsed + .tag-item,
+      #xw-css-locator-root .tag-item.xw-section-collapsed {
+        display: none;
+      }
+
+      #xw-css-locator-root .tag-star {
+        flex: 0 0 auto;
+        width: 18px;
+        height: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        color: rgba(213,83,137,.38);
+        font-size: 12px;
+        line-height: 1;
+      }
+
+      #xw-css-locator-root .tag-star.xw-starred {
+        color: rgba(232,86,146,.95);
+        text-shadow: 0 0 8px rgba(232,86,146,.32);
+      }
+
+      #xw-css-locator-root .xw-drawer {
+        position: absolute;
+        right: 12px;
+        top: 52px;
+        width: min(270px, calc(100% - 24px));
+        max-height: min(360px, calc(100% - 72px));
+        display: none;
+        grid-template-rows: auto 1fr;
+        border-radius: 18px;
+        border: 1px solid rgba(255,255,255,.78);
+        background: rgba(255,250,252,.96);
+        box-shadow: 0 18px 48px rgba(187,89,128,.24);
+        overflow: hidden;
+        z-index: 9;
+      }
+
+      #xw-css-locator-root .xw-drawer.xw-show {
+        display: grid;
+      }
+
+      #xw-css-locator-root .xw-drawer-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 9px 10px;
+        border-bottom: 1px solid rgba(238,151,185,.22);
+        color: rgba(94,43,65,.9);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      #xw-css-locator-root .xw-drawer-close {
+        border: 0;
+        background: transparent;
+        color: rgba(213,83,137,.82);
+        cursor: pointer;
+        font-size: 16px;
+      }
+
+      #xw-css-locator-root .xw-drawer-list {
+        min-height: 0;
+        overflow: auto;
+        padding: 8px;
+      }
+
+      #xw-css-locator-root .xw-drawer-item {
+        border-radius: 12px;
+        padding: 7px 8px;
+        margin-bottom: 6px;
+        background: rgba(255,255,255,.62);
+        border: 1px solid rgba(238,128,174,.16);
+        color: rgba(92,53,68,.9);
+        cursor: pointer;
+      }
+
+      #xw-css-locator-root .xw-drawer-item-title {
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      #xw-css-locator-root .xw-drawer-item-code {
+        margin-top: 3px;
+        font-family: "Fira Code", "Cascadia Code", Consolas, monospace;
+        font-size: 10px;
+        color: rgba(126,84,101,.65);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      #xw-css-locator-root .xw-empty {
+        color: rgba(126,84,101,.52);
+        font-size: 11px;
+        padding: 10px;
+        text-align: center;
+      }
+
+      #xw-css-locator-root .xw-resize {
+        display: none;
+        position: absolute;
+        z-index: 8;
+        touch-action: none;
+      }
+
+      #xw-css-locator-root .xw-open .xw-resize {
+        display: block;
+      }
+
+      #xw-css-locator-root .xw-resize-n,
+      #xw-css-locator-root .xw-resize-s {
+        left: 16px;
+        right: 16px;
+        height: 12px;
+        cursor: ns-resize;
+      }
+
+      #xw-css-locator-root .xw-resize-n { top: -4px; }
+      #xw-css-locator-root .xw-resize-s { bottom: -4px; }
+
+      #xw-css-locator-root .xw-resize-e,
+      #xw-css-locator-root .xw-resize-w {
+        top: 16px;
+        bottom: 16px;
+        width: 12px;
+        cursor: ew-resize;
+      }
+
+      #xw-css-locator-root .xw-resize-e { right: -4px; }
+      #xw-css-locator-root .xw-resize-w { left: -4px; }
+
+      #xw-css-locator-root .xw-resize-ne,
+      #xw-css-locator-root .xw-resize-nw,
+      #xw-css-locator-root .xw-resize-se,
+      #xw-css-locator-root .xw-resize-sw {
+        width: 22px;
+        height: 22px;
+      }
+
+      #xw-css-locator-root .xw-resize-ne { top: -5px; right: -5px; cursor: nesw-resize; }
+      #xw-css-locator-root .xw-resize-nw { top: -5px; left: -5px; cursor: nwse-resize; }
+      #xw-css-locator-root .xw-resize-se { right: -5px; bottom: -5px; cursor: nwse-resize; }
+      #xw-css-locator-root .xw-resize-sw { left: -5px; bottom: -5px; cursor: nesw-resize; }
+
+      #xw-css-locator-root ::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+      }
+
+      #xw-css-locator-root ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      #xw-css-locator-root ::-webkit-scrollbar-thumb {
+        background: rgba(238,128,174,.32);
+        border-radius: 999px;
+      }
+
+      @media (max-width: 600px) {
+        #xw-css-locator-root .xw-wrapper {
+          top: 58px;
+        }
+
+        #xw-css-locator-root .xw-island {
+          width: 148px;
+          height: 34px;
+        }
+
+        #xw-css-locator-root .xw-island.xw-open {
+          width: min(94vw, 520px);
+          height: min(76dvh, 620px);
+          max-height: calc(100vh - 24px);
+        }
+
+        #xw-css-locator-root .xw-compact {
+          height: 36px;
+          grid-template-columns: 1fr auto;
+          padding: 4px 10px;
+        }
+
+        #xw-css-locator-root .xw-mini-stat {
+          display: none;
+        }
+
+        #xw-css-locator-root .xw-body {
+          grid-template-columns: 1fr;
+          grid-template-rows: 190px 1fr;
+          padding: 9px;
+        }
+
+        #xw-css-locator-root .xw-drag-note {
+          display: none;
+        }
+      }
+    </style>
+
+    <div class="xw-wrapper" id="xw-wrapper">
+      <div class="xw-island" id="xw-island">
+        <div class="xw-compact" id="xw-compact">
+          <div class="xw-mini-title">CSS LOCATOR</div>
+          <div class="xw-mini-stat" id="xw-mini-stat">等待粘贴代码</div>
+          <div class="xw-pill">open</div>
+        </div>
+
+        <div class="xw-expanded">
+          <div class="xw-dragbar" id="xw-dragbar">
+            <div class="xw-drag-title">Pink CSS Selector Locator</div>
+            <div class="xw-drag-note">drag / resize</div>
+            <button class="xw-close" id="xw-close" type="button">×</button>
+          </div>
+
+          <div class="xw-body">
+            <aside class="xw-side">
+              <div class="xw-panel-head">
+                <div class="xw-panel-kicker">Selector Index</div>
+                <div class="xw-panel-title">小芜的检索器</div>
+                <input class="xw-search" id="xw-search" placeholder="搜索分类 / 名称 / 选择器">
+                <div class="xw-tool-row">
+                  <button class="xw-tool-btn" id="xw-fav-toggle" type="button">收藏夹</button>
+                  <button class="xw-tool-btn" id="xw-history-toggle" type="button">复制记录</button>
+                  <label class="xw-file-label" for="xw-file-input">导入 CSS</label>
+                  <button class="xw-tool-btn" id="xw-collapse-all" type="button">折叠分类</button>
+                </div>
+                <input class="xw-file-input" id="xw-file-input" type="file" accept=".css,.txt,text/css,text/plain">
+              </div>
+              <div class="xw-sidebar" id="xw-sidebar"></div>
+            </aside>
+
+            <main class="xw-main">
+              <div class="xw-toolbar">
+                <div class="xw-tip" id="xw-tip">粘贴 CSS 后，绿色为已找到，粉红为缺失。缺失项点击复制，已找到项点击跳转。</div>
+                <button class="xw-clear" id="xw-clear" type="button">清空</button>
+              </div>
+              <textarea class="xw-code-area" id="xw-code-area" placeholder="在此粘贴您的 CSS 代码...&#10;&#10;左侧会自动检测结构完整性。&#10;点击缺失标签：复制对应选择器。&#10;点击已找到标签：跳转到代码位置。"></textarea>
+            </main>
+          </div>
+        </div>
+
+        <div class="xw-drawer" id="xw-fav-drawer">
+          <div class="xw-drawer-head"><span>收藏夹</span><button class="xw-drawer-close" data-xw-close-drawer="fav" type="button">×</button></div>
+          <div class="xw-drawer-list" id="xw-fav-list"></div>
+        </div>
+
+        <div class="xw-drawer" id="xw-history-drawer">
+          <div class="xw-drawer-head"><span>最近复制</span><button class="xw-drawer-close" data-xw-close-drawer="history" type="button">×</button></div>
+          <div class="xw-drawer-list" id="xw-history-list"></div>
+        </div>
+
+        <div class="xw-resize xw-resize-n" data-xw-resize="n"></div>
+        <div class="xw-resize xw-resize-e" data-xw-resize="e"></div>
+        <div class="xw-resize xw-resize-s" data-xw-resize="s"></div>
+        <div class="xw-resize xw-resize-w" data-xw-resize="w"></div>
+        <div class="xw-resize xw-resize-ne" data-xw-resize="ne"></div>
+        <div class="xw-resize xw-resize-nw" data-xw-resize="nw"></div>
+        <div class="xw-resize xw-resize-se" data-xw-resize="se"></div>
+        <div class="xw-resize xw-resize-sw" data-xw-resize="sw"></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+(function(){
+  const UNIQUE_ID = 'xw-css-locator-fullscreen-root-v1';
+  const VERSION = 'v1.0-pink-fullscreen';
+
+  let targetDoc;
+  try {
+    targetDoc = window.parent.document;
+  } catch(e) {
+    targetDoc = document;
+  }
+
+  let shell = targetDoc.getElementById(UNIQUE_ID);
+
+  if(!shell || shell.dataset.xwVersion !== VERSION){
+    if(shell && shell.parentNode) shell.parentNode.removeChild(shell);
+
+    const tpl = document.getElementById('xw-css-locator-payload');
+    if(!tpl) return;
+
+    shell = targetDoc.createElement('div');
+    shell.id = UNIQUE_ID;
+    shell.dataset.xwVersion = VERSION;
+
+    const fragment = targetDoc.createRange().createContextualFragment(tpl.innerHTML);
+    shell.appendChild(fragment);
+    targetDoc.body.appendChild(shell);
+  }
+
+  try {
+    if(window.frameElement){
+      window.frameElement.style.display = 'none';
+      window.frameElement.style.width = '0';
+      window.frameElement.style.height = '0';
+      window.frameElement.style.minHeight = '0';
+    }
+  } catch(e) {}
+
+  const cssModules = {
+    "Header 顶部栏": [
+        { name: "顶部栏容器", selector: "#mufy_chat_header" },
+        { name: "头像", selector: "#mufy_chat_header > div:nth-child(1) > div > span" },
+        { name: "返回按钮", selector: "#mufy_back_button" },
+        { name: "关注按钮", selector: "#mufy_header_follow_btn" },
+        { name: "亮度按钮", selector: "#mufy_header_clarity_btn" },
+        { name: "消息按钮", selector: "#mufy_header_message_btn" },
+        { name: "更多按钮", selector: "#mufy_header_more_btn" },
+        { name: "亮度对话面板", selector: "#mufy_chat_header > div.flex.items-center.gap-2 > div > div:nth-child(1) > div, #mufy_chat_header > div.flex.items-center.gap-2 > div > div:nth-child(2) > div" },
+        { name: "下层进度条容器", selector: "#mufy_chat_header > div.flex.items-center.gap-2 > div > div:nth-child(1) > div > div > span > span.relative.h-1\\.5.w-full.grow.overflow-hidden.rounded-full.bg-primary\\/30" },
+        { name: "上层进度条", selector: "#mufy_chat_header > div.flex.items-center.gap-2 > div > div:nth-child(1) > div > div > span > span.relative.h-1\\.5.w-full.grow.overflow-hidden.rounded-full.bg-primary\\/30 > span" },
+        { name: "进度条按钮样式", selector: "#mufy_chat_header > div.flex.items-center.gap-2 > div > div:nth-child(1) > div > div > span > span:nth-child(2) > span" }
+    ],
+    "Input 输入区域": [
+        { name: "输入框容器", selector: "#mufy_chat_input_container" },
+        { name: "输入框框体", selector: "#mufy_chat_input_box" },
+        { name: "重说按钮", selector: "#mufy_chat_input_replay_btn" },
+        { name: "模型按钮", selector: "#mufy_chat_input_model_btn" },
+        { name: "模型按钮SVG", selector: "#mufy_chat_input_box > div:nth-child(1) > div > button > div.pointer-events-none.absolute.inset-0 svg" },
+        { name: "模型按钮阴影", selector: "#mufy_chat_input_box > div:nth-child(1) > div > button" },
+        { name: "重说按钮SVG", selector: "#mufy_chat_input_replay_btn > svg" },
+        { name: "输入框placeholder", selector: "#mufy_chat_input_box textarea::placeholder" },
+        { name: "发送按钮", selector: "#mufy_chat_input_box > div.relative.flex.w-full.max-w-\\[min\\(880px\\,100\\%\\)\\]_flex-row_items-center_gap-3 > div > div > div > div.flex.h-7.flex-1.justify-end > button" }
+
+    ],
+    "Chat 聊天区域": [
+        { name: "聊天主背景图设置", selector: "div[style*=\"background-image\"][class*=\"bg-cover\"]" },
+        { name: "作者的话", selector: "#mufy_author_note" },
+        { name: "操作按钮", selector: "#mufy_message_actions_btn" },
+        { name: "操作容器", selector: "#mufy_message_actions_box" },
+        { name: "续写", selector: "#mufy_message_actions_continue" },
+        { name: "删除", selector: "#mufy_message_actions_delete" },
+        { name: "修改", selector: "#mufy_message_actions_edit" },
+        { name: "复制", selector: "#mufy_message_actions_copy" },
+        { name: "用户气泡", selector: ".mufy_user_message_bubble" },
+        { name: "Ai气泡", selector: ".mufy_ai_message_bubble" },
+        { name: "ai气泡左上角星星", selector: "img[src='/chat-star.png']" },
+        { name: "narration", selector: ".mufy_message_narration" },
+        { name: "scenario", selector: ".leading-5.text-white, .relative.inline-block.w-auto.max-w-full.break-words.rounded-xl.bg-\\[\\#711B3F\\].px-3.py-2.leading-5.text-white\\/85._message_6hyew_1, .bg-clip-text.font-medium.italic.leading-5.text-transparent._message_6hyew_1" },
+        { name: "思维链", selector: ".group.flex.w-fit.cursor-pointer.select-none.items-center.gap-1.rounded-\\[14px\\].px-4.py-\\[10px\\].text-sm" },
+        { name: "思维链svg", selector: ".group.flex.w-fit.cursor-pointer.select-none.items-center.gap-1.rounded-\\[14px\\].px-4.py-\\[10px\\].text-sm svg" }
+    ],
+    "System 系统提示条": [
+        { name: "提示条容器", selector: "#root > div > div.relative.h-full.w-full.overflow-hidden.bg-\\[\\#313338\\] > div > div > div > div.z-dropdown.mx-auto.mb-2.mt-2.flex.items-center.gap-2.rounded-md.px-3.sm\\:w-\\[80vw\\].lg\\:w-\\[50vw\\]" },
+        { name: "提示条左侧SVG图标", selector: "#root > div > div.relative.h-full.w-full.overflow-hidden.bg-\\[\\#313338\\] > div > div > div > div.z-dropdown.mx-auto.mb-2.mt-2.flex.items-center.gap-2.rounded-md.px-3.sm\\:w-\\[80vw\\].lg\\:w-\\[50vw\\] > svg.lucide.lucide-circle-alert.text-white\\/60" },
+        { name: "提示条文本", selector: "#root > div > div.relative.h-full.w-full.overflow-hidden.bg-\\[\\#313338\\] > div > div > div > div.z-dropdown.mx-auto.mb-2.mt-2.flex.items-center.gap-2.rounded-md.px-3.sm\\:w-\\[80vw\\].lg\\:w-\\[50vw\\] > span" }
+    ],
+    "Inventory 物品栏": [
+        { name: "抽屉背景", selector: "div.z-system-modal-content" },
+        { name: "顶部拖拽条", selector: "div.z-system-modal-content > div.flex.justify-center.py-4 > div" },
+        { name: "物品栏标题", selector: "h2.text-center.text-\\[16px\\].text-\\[\\#938BB4\\]" },
+        { name: "物品项基础样式", selector: "div.group.relative.h-20.w-20.rounded-2xl" },
+        { name: "物品项选中样式", selector: "div.group.relative.h-20.w-20.rounded-2xl:has(div[class*=\"border-2\"])" },
+        { name: "物品项选中边框", selector: "div.group.relative.h-20.w-20.rounded-2xl div[class*=\"border-2\"]" },
+        { name: "物品项提示图标", selector: "svg.absolute.-right-1.-top-1.h-5.w-5" },
+        { name: "右侧展示区", selector: "div.relative.h-32.w-32.rounded-2xl.bg-gradient-to-b.from-\\[\\#B6B4E6\\].to-\\[\\#AFA1EB\\]" },
+        { name: "右下方大按钮", selector: "button.border-\\[\\#A092FF\\].bg-\\[\\#786BD4\\]\\/40" }
+    ],
+    "Model 模型选择抽屉": [
+        { name: "抽屉背景", selector: "[role=\"dialog\"][data-vaul-drawer]" },
+        { name: "抽屉顶部拖动条", selector: "[role=\"dialog\"][data-vaul-drawer] > div:first-child" },
+        { name: "模型选择标题文本", selector: ".text-lg.font-semibold" },
+        { name: "所有选项卡片", selector: "[role=\"dialog\"] .relative.flex.w-full.flex-col" },
+        { name: "被选中的选项", selector: "[role=\"dialog\"] .relative.flex.w-full.flex-col.has-\\[\\[data-state\\=checked\\]\\]\\:border-primary" },
+        { name: "确定按钮", selector: "button.bg-primary.text-primary-foreground" },
+        { name: "查看样例对话按钮", selector: "button.bg-\\[\\#744DCC\\].text-white.border-\\[\\#AEA3C8\\]" },
+        { name: "Combobox 按钮", selector: "button[role=\"combobox\"][data-state=\"closed\"]" },
+        { name: "圆形按钮 - 选中", selector: "button[role=\"radio\"][aria-checked=\"true\"]" },
+        { name: "圆形按钮 - 通用", selector: "button[role=\"radio\"]" },
+        { name: "圆形按钮 - 选中图标", selector: "button[role=\"radio\"][aria-checked=\"true\"] .lucide-circle" },
+        { name: "圆形按钮 - 未选中", selector: "button[role=\"radio\"][aria-checked=\"false\"]" },
+        { name: "响应时长/成功率", selector: "div.bg-\\[\\#262626\\].text-\\[10px\\]:has(.lucide-clock), div.bg-\\[\\#262626\\].text-\\[10px\\]:has(.lucide-circle-check-big)" }
+    ]
+};
+
+  function initBehavior(){
+    if(shell.dataset.xwBehaviorReady === '1') return;
+    shell.dataset.xwBehaviorReady = '1';
+
+    const root = shell.querySelector('#xw-css-locator-root');
+    if(!root) return;
+
+    const doc = root.ownerDocument;
+    const wrapper = root.querySelector('#xw-wrapper');
+    const island = root.querySelector('#xw-island');
+    const compact = root.querySelector('#xw-compact');
+    const dragbar = root.querySelector('#xw-dragbar');
+    const closeBtn = root.querySelector('#xw-close');
+    const sidebar = root.querySelector('#xw-sidebar');
+    const textarea = root.querySelector('#xw-code-area');
+    const search = root.querySelector('#xw-search');
+    const clearBtn = root.querySelector('#xw-clear');
+    const miniStat = root.querySelector('#xw-mini-stat');
+    const favToggle = root.querySelector('#xw-fav-toggle');
+    const historyToggle = root.querySelector('#xw-history-toggle');
+    const collapseAllBtn = root.querySelector('#xw-collapse-all');
+    const fileInput = root.querySelector('#xw-file-input');
+    const favDrawer = root.querySelector('#xw-fav-drawer');
+    const historyDrawer = root.querySelector('#xw-history-drawer');
+    const favList = root.querySelector('#xw-fav-list');
+    const historyList = root.querySelector('#xw-history-list');
+
+    if(!wrapper || !island || !sidebar || !textarea) return;
+
+    function clamp(value, min, max){
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function viewport(){
+      return {
+        w: doc.documentElement.clientWidth || window.innerWidth,
+        h: doc.documentElement.clientHeight || window.innerHeight
+      };
+    }
+
+    function setWrapperPosition(left, top){
+      wrapper.style.setProperty('left', left + 'px', 'important');
+      wrapper.style.setProperty('top', top + 'px', 'important');
+    }
+
+    function openPanel(){
+      island.classList.add('xw-open');
+      if(island.dataset.xwWidth) island.style.width = island.dataset.xwWidth + 'px';
+      if(island.dataset.xwHeight) island.style.height = island.dataset.xwHeight + 'px';
+      setTimeout(() => textarea.focus(), 40);
+    }
+
+    function closePanel(){
+      island.classList.remove('xw-open');
+      island.style.width = '';
+      island.style.height = '';
+    }
+
+    let moving = false;
+    let moved = false;
+    let moveMode = '';
+    let offsetX = 0;
+    let offsetY = 0;
+    let startX = 0;
+    let startY = 0;
+
+    function startMove(e, mode){
+      if(e.button != null && e.button !== 0) return;
+      if(e.target.closest('button') || e.target.closest('.xw-resize') || e.target.closest('textarea') || e.target.closest('input')) return;
+
+      const r = wrapper.getBoundingClientRect();
+
+      moving = true;
+      moved = false;
+      moveMode = mode;
+      startX = e.clientX;
+      startY = e.clientY;
+      offsetX = e.clientX - r.left;
+      offsetY = e.clientY - r.top;
+
+      island.classList.add('xw-dragging');
+
+      if(e.pointerId != null && e.currentTarget.setPointerCapture) {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }
+
+      e.preventDefault();
+    }
+
+    function moveIsland(e){
+      if(!moving) return;
+
+      const vp = viewport();
+      const rect = island.getBoundingClientRect();
+
+      if(Math.abs(e.clientX - startX) > 4 || Math.abs(e.clientY - startY) > 4) moved = true;
+
+      const halfW = rect.width / 2;
+      const minLeft = halfW + 8;
+      const maxLeft = vp.w - halfW - 8;
+      const maxTop = vp.h - rect.height - 8;
+
+      setWrapperPosition(
+        clamp(e.clientX - offsetX, minLeft, Math.max(minLeft, maxLeft)),
+        clamp(e.clientY - offsetY, 8, Math.max(8, maxTop))
+      );
+
+      e.preventDefault();
+    }
+
+    function endMove(){
+      if(!moving) return;
+
+      island.classList.remove('xw-dragging');
+
+      if(moveMode === 'compact' && !moved) openPanel();
+
+      moving = false;
+      moved = false;
+      moveMode = '';
+    }
+
+    if(compact) compact.addEventListener('pointerdown', e => startMove(e, 'compact'));
+    if(dragbar) dragbar.addEventListener('pointerdown', e => startMove(e, 'panel'));
+
+    doc.addEventListener('pointermove', moveIsland);
+    doc.addEventListener('pointerup', endMove);
+    doc.addEventListener('pointercancel', endMove);
+
+    if(closeBtn){
+      closeBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        closePanel();
+      });
+    }
+
+    let resizing = false;
+    let resizeDir = '';
+    let resizeStart = null;
+
+    root.querySelectorAll('.xw-resize').forEach(handle => {
+      handle.addEventListener('pointerdown', function(e){
+        if(e.button != null && e.button !== 0) return;
+        if(!island.classList.contains('xw-open')) return;
+
+        resizing = true;
+        resizeDir = handle.dataset.xwResize || '';
+        resizeStart = island.getBoundingClientRect();
+
+        island.classList.add('xw-dragging');
+
+        if(e.pointerId != null && handle.setPointerCapture) {
+          handle.setPointerCapture(e.pointerId);
+        }
+
+        e.stopPropagation();
+        e.preventDefault();
+      });
+    });
+
+    doc.addEventListener('pointermove', function(e){
+      if(!resizing || !resizeStart) return;
+
+      const vp = viewport();
+
+      const minW = Math.min(330, vp.w - 24);
+      const minH = 260;
+      const maxW = vp.w - 24;
+      const maxH = vp.h - 24;
+
+      let left = resizeStart.left;
+      let top = resizeStart.top;
+      let width = resizeStart.width;
+      let height = resizeStart.height;
+
+      if(resizeDir.indexOf('e') >= 0) width = e.clientX - resizeStart.left;
+      if(resizeDir.indexOf('w') >= 0) {
+        width = resizeStart.right - e.clientX;
+        left = e.clientX;
+      }
+      if(resizeDir.indexOf('s') >= 0) height = e.clientY - resizeStart.top;
+      if(resizeDir.indexOf('n') >= 0) {
+        height = resizeStart.bottom - e.clientY;
+        top = e.clientY;
+      }
+
+      width = clamp(width, minW, maxW);
+      height = clamp(height, minH, maxH);
+
+      if(resizeDir.indexOf('w') >= 0) left = resizeStart.right - width;
+      if(resizeDir.indexOf('n') >= 0) top = resizeStart.bottom - height;
+
+      left = clamp(left, 12, Math.max(12, vp.w - width - 12));
+      top = clamp(top, 12, Math.max(12, vp.h - height - 12));
+
+      island.style.width = width + 'px';
+      island.style.height = height + 'px';
+      island.dataset.xwWidth = String(Math.round(width));
+      island.dataset.xwHeight = String(Math.round(height));
+
+      setWrapperPosition(left + width / 2, top);
+      e.preventDefault();
+    });
+
+    function endResize(){
+      if(!resizing) return;
+      resizing = false;
+      resizeDir = '';
+      resizeStart = null;
+      island.classList.remove('xw-dragging');
+    }
+
+    doc.addEventListener('pointerup', endResize);
+    doc.addEventListener('pointercancel', endResize);
+
+    function copyText(text){
+      const parentWin = doc.defaultView || window.parent || window;
+      const tries = [];
+
+      try {
+        if(parentWin.navigator && parentWin.navigator.clipboard && parentWin.navigator.clipboard.writeText){
+          tries.push(() => parentWin.navigator.clipboard.writeText(text));
+        }
+      } catch(e) {}
+
+      try {
+        if(window.navigator && window.navigator.clipboard && window.navigator.clipboard.writeText){
+          tries.push(() => window.navigator.clipboard.writeText(text));
+        }
+      } catch(e) {}
+
+      function fallbackCopy(){
+        return new Promise(resolve => {
+          const temp = doc.createElement('textarea');
+          temp.value = text;
+          temp.setAttribute('readonly', 'readonly');
+          temp.style.position = 'fixed';
+          temp.style.left = '-9999px';
+          temp.style.top = '0';
+          temp.style.opacity = '0';
+          temp.style.pointerEvents = 'none';
+          doc.body.appendChild(temp);
+
+          const selection = parentWin.getSelection ? parentWin.getSelection() : null;
+          const oldRange = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
+          const active = doc.activeElement;
+
+          temp.focus({ preventScroll: true });
+          temp.select();
+          temp.setSelectionRange(0, temp.value.length);
+
+          try { doc.execCommand('copy'); } catch(e) {}
+
+          temp.remove();
+
+          try {
+            if(oldRange && selection){
+              selection.removeAllRanges();
+              selection.addRange(oldRange);
+            }
+          } catch(e) {}
+
+          try {
+            if(active && active.focus) active.focus({ preventScroll: true });
+          } catch(e) {}
+
+          resolve();
+        });
+      }
+
+      let chain = Promise.reject();
+      tries.forEach(fn => {
+        chain = chain.catch(() => fn());
+      });
+      return chain.catch(fallbackCopy);
+    }
+
+
+    const memory = {
+      favorites: [],
+      history: []
+    };
+
+    function closeDrawers(except){
+      if(favDrawer && except !== 'fav') favDrawer.classList.remove('xw-show');
+      if(historyDrawer && except !== 'history') historyDrawer.classList.remove('xw-show');
+    }
+
+    function selectorKey(item){
+      return item.selector;
+    }
+
+    function renderDrawer(listEl, arr, emptyText){
+      if(!listEl) return;
+      listEl.innerHTML = '';
+      if(!arr.length){
+        const empty = doc.createElement('div');
+        empty.className = 'xw-empty';
+        empty.textContent = emptyText;
+        listEl.appendChild(empty);
+        return;
+      }
+      arr.forEach(item => {
+        const div = doc.createElement('div');
+        div.className = 'xw-drawer-item';
+        const title = doc.createElement('div');
+        title.className = 'xw-drawer-item-title';
+        title.textContent = item.name || 'selector';
+        const code = doc.createElement('div');
+        code.className = 'xw-drawer-item-code';
+        code.textContent = item.selector || '';
+        div.appendChild(title);
+        div.appendChild(code);
+        div.addEventListener('click', () => {
+          copyText(item.selector || '').then(() => addHistory(item));
+        });
+        listEl.appendChild(div);
+      });
+    }
+
+    function renderCollections(){
+      renderDrawer(favList, memory.favorites, '还没有收藏，点标签旁边的小星星。');
+      renderDrawer(historyList, memory.history, '还没有复制记录。');
+      root.querySelectorAll('.tag-item').forEach(tag => {
+        const star = tag.querySelector('.tag-star');
+        if(star){
+          const on = memory.favorites.some(x => x.selector === tag.dataset.selector);
+          star.classList.toggle('xw-starred', on);
+          star.textContent = on ? '★' : '☆';
+        }
+      });
+    }
+
+    function addHistory(item){
+      memory.history = memory.history.filter(x => x.selector !== item.selector);
+      memory.history.unshift({ name: item.name, selector: item.selector });
+      memory.history = memory.history.slice(0, 12);
+      renderCollections();
+    }
+
+    function toggleFavorite(item){
+      const exists = memory.favorites.some(x => x.selector === item.selector);
+      if(exists){
+        memory.favorites = memory.favorites.filter(x => x.selector !== item.selector);
+      } else {
+        memory.favorites.unshift({ name: item.name, selector: item.selector });
+      }
+      renderCollections();
+    }
+
+    function setSectionCollapsed(header, collapsed){
+      header.classList.toggle('xw-collapsed', collapsed);
+      let el = header.nextElementSibling;
+      while(el && !el.classList.contains('module-header')){
+        if(el.classList && el.classList.contains('tag-item')) el.classList.toggle('xw-section-collapsed', collapsed);
+        el = el.nextElementSibling;
+      }
+    }
+
+    function initSidebar(){
+      sidebar.innerHTML = '';
+
+      for(const [moduleName, items] of Object.entries(cssModules)){
+        const header = doc.createElement('div');
+        header.className = 'module-header';
+        header.textContent = moduleName;
+        header.addEventListener('click', () => setSectionCollapsed(header, !header.classList.contains('xw-collapsed')));
+        sidebar.appendChild(header);
+
+        items.forEach(item => {
+          const tagDiv = doc.createElement('div');
+          tagDiv.className = 'tag-item missing';
+          tagDiv.dataset.selector = item.selector;
+          tagDiv.dataset.name = item.name;
+          tagDiv.dataset.module = moduleName;
+
+          const name = doc.createElement('span');
+          name.className = 'tag-name';
+          name.title = item.selector;
+          name.textContent = item.name;
+
+          const star = doc.createElement('span');
+          star.className = 'tag-star';
+          star.textContent = '☆';
+          star.title = '收藏 selector';
+
+          const status = doc.createElement('span');
+          status.className = 'tag-status';
+
+          tagDiv.appendChild(name);
+          tagDiv.appendChild(star);
+          tagDiv.appendChild(status);
+
+          star.addEventListener('click', e => {
+            e.stopPropagation();
+            toggleFavorite(item);
+          });
+
+          tagDiv.addEventListener('click', () => {
+            if(tagDiv.classList.contains('missing')) {
+              copyText(item.selector).then(() => {
+                const old = item.name;
+                name.classList.add('copied');
+                name.textContent = '已复制';
+                setTimeout(() => {
+                  name.classList.remove('copied');
+                  name.textContent = old;
+                }, 1100);
+                addHistory(item);
+              });
+            } else {
+              locateCode(item.selector);
+            }
+          });
+
+          sidebar.appendChild(tagDiv);
+        });
+      }
+    }
+
+    function locateCode(selector){
+      const code = textarea.value;
+      const index = code.indexOf(selector);
+
+      if(index !== -1){
+        textarea.focus();
+        textarea.setSelectionRange(index, index + selector.length);
+
+        const lines = code.substring(0, index).split('\n').length;
+        textarea.scrollTop = Math.max(0, (lines - 5) * 19.4);
+      }
+    }
+
+    function validateCode(){
+      const code = textarea.value;
+      const items = root.querySelectorAll('.tag-item');
+      let found = 0;
+      let total = 0;
+
+      items.forEach(item => {
+        const selector = item.dataset.selector;
+        total++;
+
+        if(code.includes(selector)){
+          found++;
+          item.classList.remove('missing');
+          item.classList.add('found');
+        } else {
+          item.classList.remove('found');
+          item.classList.add('missing');
+        }
+      });
+
+      if(miniStat){
+        miniStat.textContent = code.trim() ? ('已找到 ' + found + ' / ' + total) : '等待粘贴代码';
+      }
+    }
+
+    function filterTags(){
+      const q = (search && search.value || '').trim().toLowerCase();
+      const tags = root.querySelectorAll('.tag-item');
+
+      tags.forEach(tag => {
+        const hay = ((tag.dataset.name || '') + ' ' + (tag.dataset.module || '') + ' ' + (tag.dataset.selector || '')).toLowerCase();
+        tag.classList.toggle('xw-hidden', !!q && hay.indexOf(q) < 0);
+      });
+
+      root.querySelectorAll('.module-header').forEach(header => {
+        let el = header.nextElementSibling;
+        let hasVisible = false;
+
+        while(el && !el.classList.contains('module-header')){
+          if(el.classList && el.classList.contains('tag-item') && !el.classList.contains('xw-hidden')) {
+            hasVisible = true;
+            break;
+          }
+          el = el.nextElementSibling;
+        }
+
+        header.style.display = hasVisible || !q ? '' : 'none';
+      });
+    }
+
+    textarea.addEventListener('input', validateCode);
+    textarea.addEventListener('paste', () => setTimeout(validateCode, 80));
+
+    if(search) search.addEventListener('input', filterTags);
+
+    if(clearBtn){
+      clearBtn.addEventListener('click', () => {
+        textarea.value = '';
+        validateCode();
+        textarea.focus();
+      });
+    }
+
+
+    if(favToggle){
+      favToggle.addEventListener('click', () => {
+        closeDrawers('fav');
+        favDrawer && favDrawer.classList.toggle('xw-show');
+        renderCollections();
+      });
+    }
+
+    if(historyToggle){
+      historyToggle.addEventListener('click', () => {
+        closeDrawers('history');
+        historyDrawer && historyDrawer.classList.toggle('xw-show');
+        renderCollections();
+      });
+    }
+
+    root.querySelectorAll('[data-xw-close-drawer]').forEach(btn => {
+      btn.addEventListener('click', () => closeDrawers());
+    });
+
+    if(collapseAllBtn){
+      collapseAllBtn.addEventListener('click', () => {
+        const headers = Array.from(root.querySelectorAll('.module-header'));
+        const shouldCollapse = headers.some(h => !h.classList.contains('xw-collapsed'));
+        headers.forEach(h => setSectionCollapsed(h, shouldCollapse));
+        collapseAllBtn.textContent = shouldCollapse ? '展开分类' : '折叠分类';
+      });
+    }
+
+    if(fileInput){
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files && fileInput.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          textarea.value = String(reader.result || '');
+          validateCode();
+          textarea.focus();
+        };
+        reader.readAsText(file);
+        fileInput.value = '';
+      });
+    }
+
+    initSidebar();
+    renderCollections();
+    validateCode();
+  }
+
+  initBehavior();
+})();
+</script>
